@@ -1,0 +1,64 @@
+name: CI
+
+# Role of this workflow: regression guard.
+# The live contract (pi-subagents honoring async) is validated once at install time;
+# every pull request only has to prove that nothing broke. No LLM is used anywhere.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # Everything below is software-level: mock upstream, mocked ExtensionAPI.
+      # No LLM, no network access needed.
+      - name: Full suite (gate + extension)
+        run: bash scripts/test.sh
+
+  package:
+    name: Package, types, cleanliness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Tarball contains exactly the intended files
+        run: |
+          set -euo pipefail
+          tgz=$(npm pack 2>/dev/null | tail -n1)
+          tar -tf "$tgz" | sed 's|^package/||' | grep -v '^$' | sort > actual.txt
+          printf '%s\n' LICENSE README.md bin/model-gate.mjs index.ts package.json | sort > expected.txt
+          diff -u expected.txt actual.txt
+      - name: Type check against pi-coding-agent types
+        run: |
+          npm install --no-save typescript @earendil-works/pi-coding-agent
+          npx tsc --noEmit --skipLibCheck --module esnext --moduleResolution bundler --target es2022 index.ts
+      - name: Cleanliness scan (secrets, placeholders, agent traces)
+        run: bash scripts/scan.sh
+
+  pi-load:
+    # Proves the extension factory loads in a real Pi process without any LLM:
+    # a fake provider points at a dead port, so only the model call may fail.
+    name: Headless Pi load
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Load extension in real Pi against a dead provider
+        run: bash scripts/pi-load.sh

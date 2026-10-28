@@ -1,0 +1,22 @@
+{
+  "name": "@rShyvers/pi-subagent-mode",
+  "version": "0.1.0",
+  "description": "Per-model sync/async control for pi-subagents: local models pause until subagents finish, remote models keep working.",
+  "keywords": ["pi-package", "pi-extension", "pi", "subagents"],
+  "license": "MIT",
+  "author": "rShyvers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rShyvers/pi-subagent-mode.git"
+  },
+  "homepage": "https://github.com/rShyvers/pi-subagent-mode#readme",
+  "bugs": { "url": "https://github.com/rShyvers/pi-subagent-mode/issues" },
+  "files": ["index.ts", "bin", "README.md", "LICENSE"],
+  "bin": { "pi-model-gate": "./bin/model-gate.mjs" },
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
